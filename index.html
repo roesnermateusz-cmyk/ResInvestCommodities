@@ -1,729 +1,350 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="System zarządzania magazynem ResInvest Commodities">
-    <meta name="theme-color" content="#2563EB">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="ResInvest">
-    
-    <title>ResInvest Commodities - System Magazynowy</title>
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- Ikony dla iOS -->
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        @media print {
-            .no-print { display: none; }
-            body { background: white; }
-        }
-        .tab-button.active {
-            background-color: #EFF6FF;
-            color: #2563EB;
-            border-bottom: 2px solid #2563EB;
-        }
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .sync-indicator {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: #10B981;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 1000;
-            display: none;
-        }
-        .sync-indicator.syncing {
-            background: #F59E0B;
-            display: block;
-        }
-        .sync-indicator.synced {
-            background: #10B981;
-            display: block;
-        }
-        .sync-indicator.error {
-            background: #EF4444;
-            display: block;
-        }
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ResInvest Commodities - Magazyn</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+        :root { --green: #10b981; --blue: #3b82f6; --bg: #f9fafb; }
+        * { box-sizing: border-box; font-family: -apple-system, system-ui, sans-serif; }
+        body { background: var(--bg); padding: 10px; margin: 0; }
+
+        .header { text-align: center; background: white; padding: 15px; border-bottom: 3px solid var(--green); border-radius: 0 0 15px 15px; margin-bottom: 15px; }
+        .company { font-size: 20px; font-weight: bold; color: #111; }
+
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .stat-box { background: white; padding: 12px; border-radius: 12px; text-align: center; border: 1px solid #ddd; }
+        .stat-main { grid-column: span 2; border-left: 5px solid var(--green); }
+        .stat-val { font-size: 22px; font-weight: bold; display: block; }
+        .stat-label { font-size: 11px; color: #666; text-transform: uppercase; }
+
+        .card { background: white; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 15px; }
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #444; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+
+        button { width: 100%; padding: 14px; border-radius: 8px; border: none; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; }
+        .btn-green { background: var(--green); color: white; }
+        .btn-blue { background: var(--blue); color: white; }
+        .btn-gray { background: #e5e7eb; color: #374151; }
+        .btn-edit { background: #fef08a; color: #854d0e; width: auto; padding: 6px 12px; font-size: 12px; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; padding: 15px; }
+        .modal-content { background: white; padding: 20px; border-radius: 15px; max-height: 90vh; overflow-y: auto; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f3f4f6; }
     </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Wskaźnik synchronizacji -->
-    <div id="sync-indicator" class="sync-indicator">
-        <span id="sync-text">Synchronizacja...</span>
+ </head>
+ <body>
+  <div class="header">
+   <div class="company">ResInvest Commodities</div>
+   <div style="font-size: 12px; color: #666;">Magazyn Pyskowice</div>
+  </div>
+  <div class="stats">
+   <div class="stat-box stat-main">
+    <span class="stat-label">Aktualny Stan</span> <span id="stockVal" class="stat-val">0.00 mp</span>
+   </div>
+   <div class="stat-box">
+    <span class="stat-label">PZ (Miesiąc)</span> <span id="pzM" style="color: green; font-weight: bold;">0 mp</span>
+   </div>
+   <div class="stat-box">
+    <span class="stat-label">WZ (Miesiąc)</span> <span id="wzM" style="color: blue; font-weight: bold;">0 mp</span>
+   </div>
+  </div>
+  <div class="card">
+   <label>Data operacji</label> <input type="date" id="fDate"> <label>Typ operacji</label> <select id="fType"> <option value="PZ">PZ - Przyjęcie</option> <option value="WZ">WZ - Wydanie</option> </select> <label>Numer rejestracyjny</label>
+   <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+    <select id="fVehicle" style="margin-bottom: 0;"></select>
+    <button onclick="openVehicles()" class="btn-gray" style="width: auto;">ZARZĄDZAJ</button>
+   </div>
+   <label>Objętość (mp)</label> <input type="number" id="fVolume" step="0.01" placeholder="Wpisz mp">
+   <button class="btn-green" onclick="saveOperation()">ZAPISZ I DODAJ DO STANU</button>
+  </div>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 30px;">
+   <button class="btn-blue" onclick="openCalc()">🔢 KALKULATOR</button>
+   <button class="btn-blue" onclick="generateReport()">📄 RAPORT MIES.</button>
+  </div>
+  <div id="modalVeh" class="modal">
+   <div class="modal-content">
+    <h2 id="vehTitle">Dodaj Pojazd</h2>
+    <input type="hidden" id="editIdx" value="-1"> <input type="text" id="vehInput" placeholder="Numer rejestracyjny" style="text-transform: uppercase;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+     <button class="btn-green" id="vehSaveBtn" onclick="saveVehicle()">ZAPISZ</button>
+     <button class="btn-gray" onclick="closeModals()">ANULUJ</button>
     </div>
+    <label>Wyszukaj</label> <input type="text" id="vehSearch" placeholder="Wpisz część numeru" oninput="renderVehiclesInModal()">
+    <div id="vehList" style="border-top: 1px solid #ddd; padding-top: 15px;"></div>
+   </div>
+  </div>
+  <div id="modalCalc" class="modal">
+   <div class="modal-content">
+    <h2>Kalkulator Objętości</h2>
+    <label>Długość (m)</label> <input type="number" id="cL" step="0.01"> <label>Szerokość (m)</label> <input type="number" id="cW" step="0.01"> <label>Wysokość (m)</label> <input type="number" id="cH" step="0.01">
+    <div id="cRes" style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px; color: var(--blue);">0.00 mp</div>
+    <button class="btn-green" onclick="applyCalc()">ZATWIERDŹ WYNIK</button>
+    <button class="btn-gray" onclick="closeModals()" style="margin-top: 10px;">WRÓĆ</button>
+   </div>
+  </div>
+  <div id="modalRep" class="modal">
+   <div class="modal-content">
+    <h2>Raport Miesięczny</h2>
+    <label>Wybierz miesiąc</label> <input type="month" id="repMonth" value="">
+    <button class="btn-blue" onclick="generateReport()">ODŚWIEŻ</button>
+    <div id="reportArea"></div>
+    <button class="btn-gray" onclick="closeModals()" style="margin-top: 20px;">ZAMKNIJ RAPORT</button>
+    <button class="btn-blue" onclick="exportToExcel()" style="margin-top: 5px;">POBIERZ EXCEL</button>
+   </div>
+  </div>
+  <script>
+        let db = JSON.parse(localStorage.getItem('resDB_v6')) || { ops: [], vehicles: ['SK7H433'] };
 
-    <div id="app">
-        <!-- Nagłówek -->
-        <div class="bg-blue-600 text-white p-6 shadow-lg">
-            <h1 class="text-2xl font-bold">ResInvest Commodities</h1>
-            <p class="text-blue-100">Magazyn Pyskowice</p>
-        </div>
+        function updateMain() {
+            localStorage.setItem('resDB_v6', JSON.stringify(db));
 
-        <!-- Nawigacja -->
-        <div class="bg-white shadow-md overflow-x-auto no-print">
-            <div class="flex min-w-max">
-                <button onclick="showTab('magazyn')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50 active" data-tab="magazyn">
-                    <span>📦</span>
-                    <span class="whitespace-nowrap">Stan Magazynowy</span>
-                </button>
-                <button onclick="showTab('dokumenty')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50" data-tab="dokumenty">
-                    <span>📄</span>
-                    <span class="whitespace-nowrap">Dokumenty magazynowe</span>
-                </button>
-                <button onclick="showTab('kalkulator')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50" data-tab="kalkulator">
-                    <span>🧮</span>
-                    <span class="whitespace-nowrap">Kalkulator mp</span>
-                </button>
-                <button onclick="showTab('obecnosc')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50" data-tab="obecnosc">
-                    <span>👥</span>
-                    <span class="whitespace-nowrap">Lista Obecności</span>
-                </button>
-                <button onclick="showTab('historia')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50" data-tab="historia">
-                    <span>📊</span>
-                    <span class="whitespace-nowrap">Historia</span>
-                </button>
-            </div>
-        </div>
+            const month = new Date().toISOString().substring(0, 7);
+            let stock = 0, pz = 0, wz = 0;
 
-        <!-- Reszta HTML jest identyczna jak w poprzedniej wersji -->
-        <!-- (Stan Magazynowy, Dokumenty, Kalkulator, Lista Obecności, Historia) -->
-        <!-- Skopiuj całą zawartość z poprzedniego index.html od <!-- Zawartość --> do końca -->
-        
-        <div class="max-w-7xl mx-auto p-4 md:p-6">
-            <!-- Stan Magazynowy -->
-            <div id="tab-magazyn" class="tab-content">
-                <div class="space-y-6">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-gray-800">Stan Magazynowy</h2>
-                        <button onclick="generateWarehousePDF()" class="no-print bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span>⬇️</span>
-                            Generuj raport PDF
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-green-50 border-2 border-green-200 rounded-lg p-6">
-                            <h3 class="text-green-800 font-semibold mb-2">PZ w tym miesiącu</h3>
-                            <p class="text-3xl font-bold text-green-600" id="monthly-pz">0.00 m³</p>
-                        </div>
-                        <div class="bg-red-50 border-2 border-red-200 rounded-lg p-6">
-                            <h3 class="text-red-800 font-semibold mb-2">WZ w tym miesiącu</h3>
-                            <p class="text-3xl font-bold text-red-600" id="monthly-wz">0.00 m³</p>
-                        </div>
-                        <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-                            <h3 class="text-blue-800 font-semibold mb-2">Stan aktualny</h3>
-                            <p class="text-3xl font-bold text-blue-600" id="current-stock">0.00 m³</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            db.ops.forEach(o => {
+                if (o.type === 'PZ') {
+                    stock += o.vol;
+                    if (o.date.startsWith(month)) pz += o.vol;
+                } else {
+                    stock -= o.vol;
+                    if (o.date.startsWith(month)) wz += o.vol;
+                }
+            });
 
-            <!-- Dokumenty -->
-            <div id="tab-dokumenty" class="tab-content hidden">
-                <div class="space-y-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Dokumenty magazynowe</h2>
-                    
-                    <div id="doc-buttons" class="flex gap-4">
-                        <button onclick="showDocForm('PZ')" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
-                            Nowe PZ (Przyjęcie)
-                        </button>
-                        <button onclick="showDocForm('WZ')" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium">
-                            Nowe WZ (Wydanie)
-                        </button>
-                    </div>
+            document.getElementById('stockVal').innerText = stock.toFixed(2) + ' mp';
+            document.getElementById('pzM').innerText = pz.toFixed(2) + ' mp';
+            document.getElementById('wzM').innerText = wz.toFixed(2) + ' mp';
 
-                    <div id="doc-form" class="hidden bg-white rounded-lg shadow-lg p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-gray-800" id="doc-form-title"></h3>
-                            <button onclick="hideDocForm()" class="text-gray-500 hover:text-gray-700">✕</button>
-                        </div>
+            renderVehicleSelect();
+        }
 
-                        <div class="mb-4 p-3 bg-blue-50 rounded-lg">
-                            <p class="text-sm text-gray-700">
-                                Numer dokumentu: <strong id="doc-number-preview"></strong>
-                            </p>
-                        </div>
+        function renderVehicleSelect() {
+            const sel = document.getElementById('fVehicle');
+            sel.innerHTML = db.vehicles
+                .slice()
+                .sort()
+                .map(v => `<option value="${v}">${v}</option>`)
+                .join('');
+        }
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Data wystawienia</label>
-                                <input type="date" id="doc-data-wystawienia" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1" id="doc-data-label">Data</label>
-                                <input type="date" id="doc-data-transakcji" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Numer rejestracyjny pojazdu</label>
-                                <input type="text" id="doc-nr-rej" placeholder="np. GLE 1234" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Oznaczenie towaru/materiału</label>
-                                <input type="text" id="doc-oznaczenie" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Ilość (m³)</label>
-                                <input type="number" step="0.01" id="doc-ilosc" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1" id="doc-kontrahent-label">Kontrahent</label>
-                                <input type="text" id="doc-kontrahent" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div id="doc-podpis-container">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" id="doc-podpis-label">Podpis</label>
-                                <input type="text" id="doc-podpis" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                        </div>
+        function openVehicles() {
+            document.getElementById('modalVeh').style.display = 'block';
+            resetVehForm();
+            renderVehiclesInModal();
+        }
 
-                        <div class="mt-6">
-                            <button onclick="saveDocument()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2">
-                                <span>💾</span>
-                                Zapisz dokument
-                            </button>
+        function resetVehForm() {
+            document.getElementById('vehTitle').innerText = "Dodaj Pojazd";
+            document.getElementById('vehSaveBtn').innerText = "ZAPISZ";
+            document.getElementById('vehInput').value = "";
+            document.getElementById('editIdx').value = "-1";
+            document.getElementById('vehSearch').value = "";
+        }
+
+        function saveVehicle() {
+            const input = document.getElementById('vehInput');
+            const val = input.value.trim().toUpperCase();
+            const editIdx = parseInt(document.getElementById('editIdx').value);
+
+            if (!val) {
+                alert("Wpisz numer rejestracyjny");
+                return;
+            }
+
+            if (db.vehicles.includes(val) && editIdx === -1) {
+                alert("Ten pojazd już istnieje");
+                return;
+            }
+
+            if (editIdx === -1) {
+                db.vehicles.push(val);
+            } else {
+                db.vehicles[editIdx] = val;
+            }
+
+            localStorage.setItem('resDB_v6', JSON.stringify(db));
+            renderVehiclesInModal();
+            updateMain();
+
+            // automatyczne ustawienie nowego pojazdu w selectcie
+            document.getElementById('fVehicle').value = val;
+
+            input.value = "";
+            document.getElementById('editIdx').value = "-1";
+        }
+
+        function renderVehiclesInModal() {
+            const search = document.getElementById('vehSearch').value.trim().toUpperCase();
+            const list = document.getElementById('vehList');
+
+            const filtered = db.vehicles
+                .filter(v => v.includes(search))
+                .sort();
+
+            list.innerHTML = filtered
+                .map((v, i) => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #eee;">
+                        <span>${v}</span>
+                        <div>
+                            <button class="btn-edit" onclick="startEditVeh('${v}')">Edytuj</button>
+                            <button onclick="deleteVeh('${v}')" style="color:red; background:none; font-size:12px; width:auto; padding:0 5px;">Usuń</button>
                         </div>
                     </div>
-                </div>
-            </div>
+                `)
+                .join('');
+        }
 
-            <!-- Kalkulator -->
-            <div id="tab-kalkulator" class="tab-content hidden">
-                <div class="space-y-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Kalkulator metrów przestrzennych</h2>
-                    <div class="bg-white rounded-lg shadow-lg p-6 max-w-md">
-                        <p class="text-gray-600 mb-4">Oblicz objętość zrębki drzewnej</p>
-                        <p class="text-sm text-gray-500 mb-4">Wzór: Długość × Szerokość × Wysokość</p>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Długość (m)</label>
-                                <input type="number" step="0.01" id="calc-dlugosc" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Szerokość (m)</label>
-                                <input type="number" step="0.01" id="calc-szerokosc" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Wysokość (m)</label>
-                                <input type="number" step="0.01" id="calc-wysokosc" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <button onclick="calculateVolume()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                                Oblicz objętość
-                            </button>
-                            <div id="calc-result" class="hidden bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                                <p class="text-sm text-gray-600 mb-1">Wynik:</p>
-                                <p class="text-3xl font-bold text-green-600" id="calc-result-value"></p>
-                                <button onclick="saveCalculation()" class="mt-4 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
-                                    💾 Zapisz wynik
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        function startEditVeh(v) {
+            const idx = db.vehicles.indexOf(v);
+            if (idx === -1) return;
 
-            <!-- Lista Obecności -->
-            <div id="tab-obecnosc" class="tab-content hidden">
-                <div id="attendance-list" class="space-y-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Lista Obecności</h2>
-                    
-                    <div class="bg-white rounded-lg shadow-lg p-6 max-w-md">
-                        <h3 class="font-bold text-lg mb-4">Dodaj nowego pracownika</h3>
-                        <div class="flex gap-2">
-                            <input type="text" id="new-employee" placeholder="Imię i nazwisko" class="flex-1 border border-gray-300 rounded-lg px-3 py-2">
-                            <button onclick="addEmployee()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                                ➕ Dodaj
-                            </button>
-                        </div>
-                    </div>
+            document.getElementById('vehTitle').innerText = "Edytuj Pojazd";
+            document.getElementById('vehSaveBtn').innerText = "ZAPISZ ZMIANY";
+            document.getElementById('vehInput').value = v;
+            document.getElementById('editIdx').value = idx;
+            document.getElementById('vehInput').focus();
+        }
 
-                    <div class="space-y-3">
-                        <h3 class="font-bold text-lg text-gray-800">Pracownicy</h3>
-                        <div id="employees-container"></div>
-                    </div>
-                </div>
+        function deleteVeh(v) {
+            const idx = db.vehicles.indexOf(v);
+            if (idx === -1) return;
 
-                <div id="attendance-months" class="hidden space-y-6">
-                    <div class="flex items-center gap-4">
-                        <button onclick="backToEmployees()" class="text-blue-600 hover:text-blue-800">← Powrót</button>
-                        <h2 class="text-2xl font-bold text-gray-800" id="attendance-employee-name"></h2>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="months-container"></div>
-                </div>
+            if (confirm("Usunąć auto z listy?")) {
+                db.vehicles.splice(idx, 1);
+                localStorage.setItem('resDB_v6', JSON.stringify(db));
+                renderVehiclesInModal();
+                updateMain();
+            }
+        }
 
-                <div id="attendance-calendar" class="hidden space-y-6">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <button onclick="backToMonths()" class="text-blue-600 hover:text-blue-800">← Powrót</button>
-                            <h2 class="text-2xl font-bold text-gray-800" id="attendance-month-title"></h2>
-                        </div>
-                        <div class="flex gap-2 no-print">
-                            <button onclick="printAttendance()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                                🖨️ Drukuj
-                            </button>
-                            <button onclick="generateAttendancePDF()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                                ⬇️ Generuj PDF
-                            </button>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Data</th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Godziny pracy</th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Podpis</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="attendance-table-body" class="divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        function saveOperation() {
+            const date = document.getElementById('fDate').value;
+            const type = document.getElementById('fType').value;
+            const veh = document.getElementById('fVehicle').value;
+            const vol = parseFloat(document.getElementById('fVolume').value);
 
-            <!-- Historia -->
-            <div id="tab-historia" class="tab-content hidden">
-                <div class="space-y-6">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-gray-800">Historia dokumentów</h2>
-                        <button onclick="generateHistoryPDF()" class="no-print bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span>⬇️</span>
-                            Generuj raport PDF
-                        </button>
-                    </div>
+            if (!date || isNaN(vol) || !veh) {
+                alert("Wypełnij wszystkie pola!");
+                return;
+            }
 
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="font-bold text-lg mb-4">Podsumowanie ogólne</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="border-l-4 border-green-500 pl-4">
-                                <p class="text-sm text-gray-600">Łączne przyjęcia (PZ)</p>
-                                <p class="text-2xl font-bold text-green-600" id="total-pz">0.00 m³</p>
-                            </div>
-                            <div class="border-l-4 border-red-500 pl-4">
-                                <p class="text-sm text-gray-600">Łączne wydania (WZ)</p>
-                                <p class="text-2xl font-bold text-red-600" id="total-wz">0.00 m³</p>
-                            </div>
-                            <div class="border-l-4 border-blue-500 pl-4">
-                                <p class="text-sm text-gray-600">Stan magazynowy</p>
-                                <p class="text-2xl font-bold text-blue-600" id="total-stock">0.00 m³</p>
-                            </div>
-                        </div>
-                    </div>
+            db.ops.push({ date, type, veh, vol });
+            updateMain();
+            document.getElementById('fVolume').value = '';
+            alert("Operacja zapisana!");
+        }
 
-                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Typ</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Numer</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nr rej.</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Oznaczenie</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ilość (m³)</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kontrahent</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Podpis</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="history-table-body" class="divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+        function openCalc() {
+            document.getElementById('modalCalc').style.display = 'block';
+            ['cL', 'cW', 'cH'].forEach(id => {
+                document.getElementById(id).oninput = () => {
+                    const r = (document.getElementById('cL').value || 0)
+                            * (document.getElementById('cW').value || 0)
+                            * (document.getElementById('cH').value || 0);
+                    document.getElementById('cRes').innerText = r.toFixed(2) + ' mp';
+                };
+            });
+        }
 
-    <!-- Google Sheets API -->
-    <script src="sheets-config.js"></script>
-    
-    <script>
-        // KONTYNUACJA W NASTĘPNEJ WIADOMOŚCI - TO JEST BARDZO DŁUGI PLIK
+        function applyCalc() {
+            const r = (document.getElementById('cL').value || 0)
+                    * (document.getElementById('cW').value || 0)
+                    * (document.getElementById('cH').value || 0);
+            document.getElementById('fVolume').value = r.toFixed(2);
+            closeModals();
+        }
+
+        function generateReport() {
+            const month = document.getElementById('repMonth').value || new Date().toISOString().substring(0, 7);
+            document.getElementById('repMonth').value = month;
+
+            const filtered = db.ops
+                .filter(o => o.date.startsWith(month))
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            let html = `<table><tr><th>Data</th><th>Auto</th><th>Typ</th><th>Ilość</th><th>Akcje</th></tr>`;
+            let spz = 0, swz = 0;
+
+            filtered.forEach((o, idx) => {
+                html += `<tr>
+                    <td>${o.date}</td>
+                    <td>${o.veh}</td>
+                    <td>${o.type}</td>
+                    <td>${o.vol.toFixed(2)} mp</td>
+                    <td>
+                        <button class="btn-edit" onclick="editOp(${idx}, '${month}')">Edytuj</button>
+                        <button onclick="deleteOp(${idx}, '${month}')" style="color:red; background:none; font-size:12px; width:auto; padding:0 5px;">Usuń</button>
+                    </td>
+                </tr>`;
+                if (o.type === 'PZ') spz += o.vol; else swz += o.vol;
+            });
+
+            html += `</table>`;
+            html += `<div style="margin-top:15px; padding:10px; background:#f0f9ff; border-radius:8px;">
+                <b>SUMA PZ:</b> ${spz.toFixed(2)} mp<br>
+                <b>SUMA WZ:</b> ${swz.toFixed(2)} mp<br>
+                <hr>
+                <b>BILANS MIESIĄCA:</b> ${(spz - swz).toFixed(2)} mp
+            </div>`;
+
+            document.getElementById('reportArea').innerHTML = filtered.length ? html : "Brak operacji w tym miesiącu.";
+            document.getElementById('modalRep').style.display = 'block';
+        }
+
+        function editOp(idx, month) {
+            const filtered = db.ops.filter(o => o.date.startsWith(month));
+            const op = filtered[idx];
+            if (!op) return;
+
+            // znajdź właściwy indeks w db.ops
+            const realIdx = db.ops.findIndex(o => o.date === op.date && o.veh === op.veh && o.type === op.type && o.vol === op.vol);
+            if (realIdx === -1) return;
+
+            document.getElementById('fDate').value = db.ops[realIdx].date;
+            document.getElementById('fType').value = db.ops[realIdx].type;
+            document.getElementById('fVehicle').value = db.ops[realIdx].veh;
+            document.getElementById('fVolume').value = db.ops[realIdx].vol;
+
+            // usuń operację (zamiast edytować w osobnym formularzu)
+            db.ops.splice(realIdx, 1);
+            updateMain();
+            closeModals();
+        }
+
+        function deleteOp(idx, month) {
+            const filtered = db.ops.filter(o => o.date.startsWith(month));
+            const op = filtered[idx];
+            if (!op) return;
+
+            const realIdx = db.ops.findIndex(o => o.date === op.date && o.veh === op.veh && o.type === op.type && o.vol === op.vol);
+            if (realIdx === -1) return;
+
+            if (confirm("Usunąć operację?")) {
+                db.ops.splice(realIdx, 1);
+                updateMain();
+                generateReport();
+            }
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        }
+
+        function exportToExcel() {
+            const ws = XLSX.utils.json_to_sheet(db.ops);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Historia");
+            XLSX.writeFile(wb, "Magazyn_ResInvest.xlsx");
+        }
+
+        document.getElementById('fDate').valueAsDate = new Date();
+        document.getElementById('repMonth').value = new Date().toISOString().substring(0, 7);
+        updateMain();
     </script>
-</body>
-</html><script><!DOCTYPE html>
-<html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="System zarządzania magazynem ResInvest Commodities">
-    <meta name="theme-color" content="#2563EB">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="ResInvest">
-    
-    <title>ResInvest Commodities - System Magazynowy</title>
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- Ikony dla iOS -->
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        @media print {
-            .no-print { display: none; }
-            body { background: white; }
-        }
-        .tab-button.active {
-            background-color: #EFF6FF;
-            color: #2563EB;
-            border-bottom: 2px solid #2563EB;
-        }
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .sync-indicator {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: #10B981;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 1000;
-            display: none;
-        }
-        .sync-indicator.syncing {
-            background: #F59E0B;
-            display: block;
-        }
-        .sync-indicator.synced {
-            background: #10B981;
-            display: block;
-        }
-        .sync-indicator.error {
-            background: #EF4444;
-            display: block;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Wskaźnik synchronizacji -->
-    <div id="sync-indicator" class="sync-indicator">
-        <span id="sync-text">Synchronizacja...</span>
-    </div>
-
-    <div id="app">
-        <!-- Nagłówek -->
-        <div class="bg-blue-600 text-white p-6 shadow-lg">
-            <h1 class="text-2xl font-bold">ResInvest Commodities</h1>
-            <p class="text-blue-100">Magazyn Pyskowice</p>
-        </div>
-
-        <!-- Nawigacja -->
-        <div class="bg-white shadow-md overflow-x-auto no-print">
-            <div class="flex min-w-max">
-                <button onclick="showTab('magazyn')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50 active" data-tab="magazyn">
-                    <span>📦</span>
-                    <span class="whitespace-nowrap">Stan Magazynowy</span>
-                </button>
-                <button onclick="showTab('dokumenty')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50" data-tab="dokumenty">
-                    <span>📄</span>
-                    <span class="whitespace-nowrap">Dokumenty magazynowe</span>
-                </button>
-                <button onclick="showTab('kalkulator')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50" data-tab="kalkulator">
-                    <span>🧮</span>
-                    <span class="whitespace-nowrap">Kalkulator mp</span>
-                </button>
-                <button onclick="showTab('obecnosc')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50" data-tab="obecnosc">
-                    <span>👥</span>
-                    <span class="whitespace-nowrap">Lista Obecności</span>
-                </button>
-                <button onclick="showTab('historia')" class="tab-button flex items-center gap-2 px-6 py-4 font-medium transition-colors text-gray-600 hover:bg-gray-50" data-tab="historia">
-                    <span>📊</span>
-                    <span class="whitespace-nowrap">Historia</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Reszta HTML jest identyczna jak w poprzedniej wersji -->
-        <!-- (Stan Magazynowy, Dokumenty, Kalkulator, Lista Obecności, Historia) -->
-        <!-- Skopiuj całą zawartość z poprzedniego index.html od <!-- Zawartość --> do końca -->
-        
-        <div class="max-w-7xl mx-auto p-4 md:p-6">
-            <!-- Stan Magazynowy -->
-            <div id="tab-magazyn" class="tab-content">
-                <div class="space-y-6">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-gray-800">Stan Magazynowy</h2>
-                        <button onclick="generateWarehousePDF()" class="no-print bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span>⬇️</span>
-                            Generuj raport PDF
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-green-50 border-2 border-green-200 rounded-lg p-6">
-                            <h3 class="text-green-800 font-semibold mb-2">PZ w tym miesiącu</h3>
-                            <p class="text-3xl font-bold text-green-600" id="monthly-pz">0.00 m³</p>
-                        </div>
-                        <div class="bg-red-50 border-2 border-red-200 rounded-lg p-6">
-                            <h3 class="text-red-800 font-semibold mb-2">WZ w tym miesiącu</h3>
-                            <p class="text-3xl font-bold text-red-600" id="monthly-wz">0.00 m³</p>
-                        </div>
-                        <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-                            <h3 class="text-blue-800 font-semibold mb-2">Stan aktualny</h3>
-                            <p class="text-3xl font-bold text-blue-600" id="current-stock">0.00 m³</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dokumenty -->
-            <div id="tab-dokumenty" class="tab-content hidden">
-                <div class="space-y-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Dokumenty magazynowe</h2>
-                    
-                    <div id="doc-buttons" class="flex gap-4">
-                        <button onclick="showDocForm('PZ')" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
-                            Nowe PZ (Przyjęcie)
-                        </button>
-                        <button onclick="showDocForm('WZ')" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium">
-                            Nowe WZ (Wydanie)
-                        </button>
-                    </div>
-
-                    <div id="doc-form" class="hidden bg-white rounded-lg shadow-lg p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-gray-800" id="doc-form-title"></h3>
-                            <button onclick="hideDocForm()" class="text-gray-500 hover:text-gray-700">✕</button>
-                        </div>
-
-                        <div class="mb-4 p-3 bg-blue-50 rounded-lg">
-                            <p class="text-sm text-gray-700">
-                                Numer dokumentu: <strong id="doc-number-preview"></strong>
-                            </p>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Data wystawienia</label>
-                                <input type="date" id="doc-data-wystawienia" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1" id="doc-data-label">Data</label>
-                                <input type="date" id="doc-data-transakcji" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Numer rejestracyjny pojazdu</label>
-                                <input type="text" id="doc-nr-rej" placeholder="np. GLE 1234" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Oznaczenie towaru/materiału</label>
-                                <input type="text" id="doc-oznaczenie" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Ilość (m³)</label>
-                                <input type="number" step="0.01" id="doc-ilosc" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1" id="doc-kontrahent-label">Kontrahent</label>
-                                <input type="text" id="doc-kontrahent" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div id="doc-podpis-container">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" id="doc-podpis-label">Podpis</label>
-                                <input type="text" id="doc-podpis" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                        </div>
-
-                        <div class="mt-6">
-                            <button onclick="saveDocument()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2">
-                                <span>💾</span>
-                                Zapisz dokument
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Kalkulator -->
-            <div id="tab-kalkulator" class="tab-content hidden">
-                <div class="space-y-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Kalkulator metrów przestrzennych</h2>
-                    <div class="bg-white rounded-lg shadow-lg p-6 max-w-md">
-                        <p class="text-gray-600 mb-4">Oblicz objętość zrębki drzewnej</p>
-                        <p class="text-sm text-gray-500 mb-4">Wzór: Długość × Szerokość × Wysokość</p>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Długość (m)</label>
-                                <input type="number" step="0.01" id="calc-dlugosc" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Szerokość (m)</label>
-                                <input type="number" step="0.01" id="calc-szerokosc" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Wysokość (m)</label>
-                                <input type="number" step="0.01" id="calc-wysokosc" class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                            </div>
-                            <button onclick="calculateVolume()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                                Oblicz objętość
-                            </button>
-                            <div id="calc-result" class="hidden bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                                <p class="text-sm text-gray-600 mb-1">Wynik:</p>
-                                <p class="text-3xl font-bold text-green-600" id="calc-result-value"></p>
-                                <button onclick="saveCalculation()" class="mt-4 w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium">
-                                    💾 Zapisz wynik
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Lista Obecności -->
-            <div id="tab-obecnosc" class="tab-content hidden">
-                <div id="attendance-list" class="space-y-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Lista Obecności</h2>
-                    
-                    <div class="bg-white rounded-lg shadow-lg p-6 max-w-md">
-                        <h3 class="font-bold text-lg mb-4">Dodaj nowego pracownika</h3>
-                        <div class="flex gap-2">
-                            <input type="text" id="new-employee" placeholder="Imię i nazwisko" class="flex-1 border border-gray-300 rounded-lg px-3 py-2">
-                            <button onclick="addEmployee()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                                ➕ Dodaj
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <h3 class="font-bold text-lg text-gray-800">Pracownicy</h3>
-                        <div id="employees-container"></div>
-                    </div>
-                </div>
-
-                <div id="attendance-months" class="hidden space-y-6">
-                    <div class="flex items-center gap-4">
-                        <button onclick="backToEmployees()" class="text-blue-600 hover:text-blue-800">← Powrót</button>
-                        <h2 class="text-2xl font-bold text-gray-800" id="attendance-employee-name"></h2>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="months-container"></div>
-                </div>
-
-                <div id="attendance-calendar" class="hidden space-y-6">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <button onclick="backToMonths()" class="text-blue-600 hover:text-blue-800">← Powrót</button>
-                            <h2 class="text-2xl font-bold text-gray-800" id="attendance-month-title"></h2>
-                        </div>
-                        <div class="flex gap-2 no-print">
-                            <button onclick="printAttendance()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                                🖨️ Drukuj
-                            </button>
-                            <button onclick="generateAttendancePDF()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                                ⬇️ Generuj PDF
-                            </button>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Data</th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Godziny pracy</th>
-                                        <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Podpis</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="attendance-table-body" class="divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Historia -->
-            <div id="tab-historia" class="tab-content hidden">
-                <div class="space-y-6">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-gray-800">Historia dokumentów</h2>
-                        <button onclick="generateHistoryPDF()" class="no-print bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                            <span>⬇️</span>
-                            Generuj raport PDF
-                        </button>
-                    </div>
-
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <h3 class="font-bold text-lg mb-4">Podsumowanie ogólne</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="border-l-4 border-green-500 pl-4">
-                                <p class="text-sm text-gray-600">Łączne przyjęcia (PZ)</p>
-                                <p class="text-2xl font-bold text-green-600" id="total-pz">0.00 m³</p>
-                            </div>
-                            <div class="border-l-4 border-red-500 pl-4">
-                                <p class="text-sm text-gray-600">Łączne wydania (WZ)</p>
-                                <p class="text-2xl font-bold text-red-600" id="total-wz">0.00 m³</p>
-                            </div>
-                            <div class="border-l-4 border-blue-500 pl-4">
-                                <p class="text-sm text-gray-600">Stan magazynowy</p>
-                                <p class="text-2xl font-bold text-blue-600" id="total-stock">0.00 m³</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Typ</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Numer</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nr rej.</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Oznaczenie</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ilość (m³)</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kontrahent</th>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Podpis</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="history-table-body" class="divide-y divide-gray-200"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Google Sheets API -->
-    <script src="sheets-config.js"></script>
-    
-    <script>
-        // KONTYNUACJA W NASTĘPNEJ WIADOMOŚCI - TO JEST BARDZO DŁUGI PLIK
-    </script>
-</body>
-</html></script>
+ </body>
+</html>
